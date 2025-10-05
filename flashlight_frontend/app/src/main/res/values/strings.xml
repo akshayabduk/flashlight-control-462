@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Flashlight</string>
+    <string name="toggle_on">Turn On</string>
+    <string name="toggle_off">Turn Off</string>
+    <string name="flash_unavailable">Flash not available</string>
+    <string name="permission_required">Camera permission may be required to control the flashlight</string>
+    <string name="permission_denied">Permission denied</string>
+</resources>

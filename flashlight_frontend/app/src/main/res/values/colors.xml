@@ -1,0 +1,8 @@
+<resources>
+    <color name="colorPrimary">#2563EB</color>
+    <color name="colorSecondary">#F59E0B</color>
+    <color name="colorError">#EF4444</color>
+    <color name="colorBackground">#F9FAFB</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorOnSurfaceText">#111827</color>
+</resources>

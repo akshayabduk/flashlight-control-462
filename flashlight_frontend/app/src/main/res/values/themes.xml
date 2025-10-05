@@ -1,0 +1,35 @@
+<resources>
+
+    <!-- App Theme based on Material Components DayNight without action bar -->
+    <style name="Theme.OceanProfessional" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Core colors -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimary</item>
+        <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorSecondaryVariant">@color/colorSecondary</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="android:textColor">@color/colorOnSurfaceText</item>
+
+        <!-- Surface/On colors -->
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorOnSecondary">@android:color/black</item>
+        <item name="colorOnSurface">@color/colorOnSurfaceText</item>
+
+        <!-- Button styling -->
+        <item name="buttonStyle">@style/Widget.OceanPrimaryButton</item>
+    </style>
+
+    <!-- Primary rounded button style -->
+    <style name="Widget.OceanPrimaryButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/colorPrimary</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="elevation">4dp</item>
+        <item name="rippleColor">@color/colorSecondary</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:minWidth">200dp</item>
+    </style>
+
+</resources>
