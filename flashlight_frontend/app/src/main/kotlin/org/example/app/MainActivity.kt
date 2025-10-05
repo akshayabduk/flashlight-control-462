@@ -22,7 +22,8 @@ import androidx.core.content.ContextCompat
  */
 class MainActivity : Activity() {
 
-    private lateinit var toggleButton: Button
+    // Use nullable reference to avoid IllegalState before setContentView/binding
+    private var toggleButton: Button? = null
     private var cameraManager: CameraManager? = null
     private var backFlashCameraId: String? = null
     private var torchOn: Boolean = false
@@ -54,16 +55,19 @@ class MainActivity : Activity() {
         toggleButton = findViewById(R.id.toggleButton)
         cameraManager = getSystemService(CameraManager::class.java)
 
+        // Initial scan for a usable back camera with flash
         findBackCameraWithFlash()
         registerTorchCallbackSafe(true)
 
-        toggleButton.setOnClickListener { handleToggleClick() }
+        toggleButton?.setOnClickListener { handleToggleClick() }
 
         updateUi()
     }
 
     override fun onStart() {
         super.onStart()
+        // Re-scan in case camera availability changed (USB, multiple users, permissions toggled)
+        findBackCameraWithFlash()
         registerTorchCallbackSafe(true)
         updateUi()
     }
@@ -87,8 +91,9 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Ensure callbacks are unregistered
+        // Ensure callbacks are unregistered and clear view refs for safety
         registerTorchCallbackSafe(false)
+        toggleButton = null
     }
 
     private fun handleToggleClick() {
@@ -100,6 +105,8 @@ class MainActivity : Activity() {
             requestCameraPermissionIfNeeded()
         } catch (_: Throwable) {
             Toast.makeText(this, getString(R.string.flash_unavailable), Toast.LENGTH_SHORT).show()
+            // Ensure UI reflects inability to toggle
+            updateUi()
         }
     }
 
@@ -111,21 +118,27 @@ class MainActivity : Activity() {
                     Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show()
                 }
                 ActivityCompat.requestPermissions(this, arrayOf(cameraPermission), REQ_CAMERA)
+                // Immediately reflect that action is pending; disable if not controllable
+                updateUi()
             } else {
                 retryToggleAfterPermission()
             }
         } else {
             Toast.makeText(this, getString(R.string.flash_unavailable), Toast.LENGTH_SHORT).show()
+            updateUi()
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_CAMERA) {
+            // Re-scan cameras as permission can change availability information
+            findBackCameraWithFlash()
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 retryToggleAfterPermission()
             } else {
                 Toast.makeText(this, getString(R.string.permission_denied), Toast.LENGTH_SHORT).show()
+                // Update UI immediately to reflect denial
                 updateUi()
             }
         }
@@ -136,6 +149,7 @@ class MainActivity : Activity() {
             turnTorchInternal(!torchOn)
         } catch (_: Throwable) {
             Toast.makeText(this, getString(R.string.flash_unavailable), Toast.LENGTH_SHORT).show()
+            updateUi()
         }
     }
 
@@ -144,8 +158,10 @@ class MainActivity : Activity() {
             turnTorchInternal(on)
         } catch (_: SecurityException) {
             // Ignore during lifecycle changes if permission is not present
+            updateUi()
         } catch (_: Throwable) {
             // Ignore in lifecycle
+            updateUi()
         }
     }
 
@@ -199,16 +215,17 @@ class MainActivity : Activity() {
     }
 
     private fun updateUi() {
+        val btn = toggleButton ?: return
         val available = backFlashCameraId != null && torchControllable
-        toggleButton.isEnabled = available
-        toggleButton.text = when {
+        btn.isEnabled = available
+        btn.text = when {
             !available -> getString(R.string.flash_unavailable)
             torchOn -> getString(R.string.toggle_off)
             else -> getString(R.string.toggle_on)
         }
-        toggleButton.alpha = if (available) 1.0f else 0.5f
-        toggleButton.contentDescription = toggleButton.text
-        toggleButton.visibility = View.VISIBLE
+        btn.alpha = if (available) 1.0f else 0.5f
+        btn.contentDescription = btn.text
+        btn.visibility = View.VISIBLE
     }
 
     companion object {
