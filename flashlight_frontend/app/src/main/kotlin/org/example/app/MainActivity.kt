@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
@@ -27,7 +26,7 @@ class MainActivity : Activity() {
     private var cameraManager: CameraManager? = null
     private var backFlashCameraId: String? = null
     private var torchOn: Boolean = false
-    private var torchAvailable: Boolean = false
+    private var torchControllable: Boolean = false
 
     private val cameraPermission = Manifest.permission.CAMERA
 
@@ -35,15 +34,14 @@ class MainActivity : Activity() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
             if (cameraId == backFlashCameraId) {
                 torchOn = enabled
-                // If we receive a state change callback for this camera, consider torch controllable.
-                torchAvailable = true
+                torchControllable = true
                 updateUi()
             }
         }
 
         override fun onTorchModeUnavailable(cameraId: String) {
             if (cameraId == backFlashCameraId) {
-                torchAvailable = false
+                torchControllable = false
                 updateUi()
             }
         }
@@ -54,15 +52,12 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         toggleButton = findViewById(R.id.toggleButton)
-
         cameraManager = getSystemService(CameraManager::class.java)
 
         findBackCameraWithFlash()
         registerTorchCallbackSafe(true)
 
-        toggleButton.setOnClickListener {
-            handleToggleClick()
-        }
+        toggleButton.setOnClickListener { handleToggleClick() }
 
         updateUi()
     }
@@ -80,42 +75,46 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
-        // To avoid leaving flashlight on when app goes to background, turn it off conservatively.
+        // Conservatively turn off when app goes to background to avoid leaving flashlight on
         turnTorchSafe(false)
     }
 
     override fun onStop() {
         super.onStop()
-        // Unregister to avoid leaks.
+        // Unregister to avoid leaks
+        registerTorchCallbackSafe(false)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Ensure callbacks are unregistered
         registerTorchCallbackSafe(false)
     }
 
     private fun handleToggleClick() {
-        // Try to toggle without asking for permission unless needed (SecurityException).
         val desired = !torchOn
         try {
             turnTorchInternal(desired)
         } catch (se: SecurityException) {
-            // Permission might be required on this device.
+            // Request permission only if actually needed on this device
             requestCameraPermissionIfNeeded()
-        } catch (t: Throwable) {
+        } catch (_: Throwable) {
             Toast.makeText(this, getString(R.string.flash_unavailable), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun requestCameraPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, cameraPermission) != PackageManager.PERMISSION_GRANTED) {
+            val granted = ContextCompat.checkSelfPermission(this, cameraPermission) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, cameraPermission)) {
                     Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show()
                 }
                 ActivityCompat.requestPermissions(this, arrayOf(cameraPermission), REQ_CAMERA)
             } else {
-                // Permission already granted, retry operation
                 retryToggleAfterPermission()
             }
         } else {
-            // On older devices (not in our minSdk), fallback message.
             Toast.makeText(this, getString(R.string.flash_unavailable), Toast.LENGTH_SHORT).show()
         }
     }
@@ -133,11 +132,9 @@ class MainActivity : Activity() {
     }
 
     private fun retryToggleAfterPermission() {
-        // After permission granted, attempt to toggle to the opposite of current state
         try {
             turnTorchInternal(!torchOn)
         } catch (_: Throwable) {
-            // If still fails, inform user.
             Toast.makeText(this, getString(R.string.flash_unavailable), Toast.LENGTH_SHORT).show()
         }
     }
@@ -146,9 +143,9 @@ class MainActivity : Activity() {
         try {
             turnTorchInternal(on)
         } catch (_: SecurityException) {
-            // Silently ignore on backgrounding if permission needed.
+            // Ignore during lifecycle changes if permission is not present
         } catch (_: Throwable) {
-            // Ignore in lifecycle.
+            // Ignore in lifecycle
         }
     }
 
@@ -156,7 +153,7 @@ class MainActivity : Activity() {
         val mgr = cameraManager ?: return
         val id = backFlashCameraId ?: return
         mgr.setTorchMode(id, on)
-        // Optimistically update; TorchCallback will finalize state.
+        // Optimistically update UI; callback will confirm state
         torchOn = on
         updateUi()
     }
@@ -164,7 +161,7 @@ class MainActivity : Activity() {
     private fun findBackCameraWithFlash() {
         val mgr = cameraManager ?: return
         backFlashCameraId = null
-        torchAvailable = false
+        torchControllable = false
 
         try {
             for (cameraId in mgr.cameraIdList) {
@@ -172,15 +169,15 @@ class MainActivity : Activity() {
                 val hasFlash = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
                 val facing = chars.get(CameraCharacteristics.LENS_FACING)
                 val isBack = facing == CameraCharacteristics.LENS_FACING_BACK
-                if (hasFlash == true && isBack) {
+                if (hasFlash && isBack) {
                     backFlashCameraId = cameraId
-                    torchAvailable = true
+                    torchControllable = true
                     break
                 }
             }
         } catch (_: Throwable) {
             backFlashCameraId = null
-            torchAvailable = false
+            torchControllable = false
         }
     }
 
@@ -202,16 +199,16 @@ class MainActivity : Activity() {
     }
 
     private fun updateUi() {
-        val available = (backFlashCameraId != null) && (torchAvailable || true)
+        val available = backFlashCameraId != null && torchControllable
         toggleButton.isEnabled = available
-        toggleButton.text = if (torchOn) getString(R.string.toggle_off) else getString(R.string.toggle_on)
+        toggleButton.text = when {
+            !available -> getString(R.string.flash_unavailable)
+            torchOn -> getString(R.string.toggle_off)
+            else -> getString(R.string.toggle_on)
+        }
         toggleButton.alpha = if (available) 1.0f else 0.5f
         toggleButton.contentDescription = toggleButton.text
         toggleButton.visibility = View.VISIBLE
-        if (!available) {
-            // Provide a hint if unavailable
-            toggleButton.text = getString(R.string.flash_unavailable)
-        }
     }
 
     companion object {

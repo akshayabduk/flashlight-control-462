@@ -23,6 +23,7 @@
 
     <!-- Primary rounded button style -->
     <style name="Widget.OceanPrimaryButton" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/colorPrimary</item>
         <item name="android:backgroundTint">@color/colorPrimary</item>
         <item name="android:textColor">@android:color/white</item>
         <item name="cornerRadius">16dp</item>

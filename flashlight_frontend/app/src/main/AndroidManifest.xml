@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Minimal permission required for potential torch control on some OEMs -->
+    <!-- Minimal permission that may be required on some devices to control torch -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- Declare camera hardware as optional to satisfy lint/play requirements -->
+
+    <!-- Camera hardware marked optional to allow install on devices without camera -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
-    <!-- Declare flash feature as optional so app installs on devices without flash -->
+
+    <!-- Flash hardware marked optional so app remains installable on devices without flash -->
     <uses-feature
         android:name="android.hardware.camera.flash"
         android:required="false" />
